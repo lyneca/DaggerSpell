@@ -78,18 +78,6 @@ namespace DaggerSpell {
             rb.isKinematic = false;
         }
 
-
-
-        private Bounds GetMaxBounds(GameObject g) {
-            var b = new Bounds(g.transform.position, Vector3.zero);
-            foreach (Renderer r in g.GetComponentsInChildren<Renderer>()) {
-                b.Encapsulate(r.bounds);
-            }
-            return b;
-        }
-
-
-
         public override void Fire(bool active) {
             base.Fire(active);
             if (active) {
@@ -108,10 +96,12 @@ namespace DaggerSpell {
                 EnableDagger();
                 if (currentCharge != 1) {
                     summonedDagger.Despawn();
-                    if (summonedDagger != null)
-                        UnityEngine.Object.Destroy(summonedDagger);
                 }
                 daggerActive = false;
+                currentCharge = 0;
+                spellCaster.grabbedFire = false;
+                spellCaster.isFiring = false;
+                spellCaster.bodyHand.interactor.ClearTouch();
             }
         }
 
@@ -122,10 +112,10 @@ namespace DaggerSpell {
                 Rigidbody rb = summonedDagger.GetComponent<Rigidbody>();
                 summonedDagger.transform.rotation = Quaternion.LookRotation(velocity) * Quaternion.LookRotation(Vector3.left);
                 rb.AddForce(velocity * 5, ForceMode.Impulse);
-                //throwEffectInstance = throwEffect.Spawn(Creature.player.body.GetHand(spellCaster.bodyHand.side).transform);
-                throwEffectInstance = throwEffect.Spawn(Vector3.zero, Quaternion.identity);
+                throwEffectInstance = throwEffect.Spawn(spellCaster.magicSource);
+                throwEffectInstance.SetTarget(summonedDagger.transform);
                 throwEffectInstance.Play();
-                throwEffectInstance.SetIntensity(1f);
+                //throwEffectInstance.SetIntensity(1f);
                 //foreach (PropertyDescriptor descriptor in TypeDescriptor.GetProperties(throwEffectInstance)) {
                 //    string name = descriptor.Name;
                 //    object value = descriptor.GetValue(throwEffectInstance);

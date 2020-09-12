@@ -63,6 +63,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AbstractMergeSpell.cs" />
     <Compile Include="DaggerFireMerge.cs" />
     <Compile Include="DaggerGravityMerge.cs" />
     <Compile Include="DaggerLightningMerge.cs" />
