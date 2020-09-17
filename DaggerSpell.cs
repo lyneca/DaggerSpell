@@ -9,10 +9,12 @@ using System.ComponentModel;
 
 namespace DaggerSpell {
     public class DaggerSpell : SpellCastCharge {
-
+        [global::Sirenix.OdinInspector.BoxGroup("Merge", true, false, 0)]
+        [global::Sirenix.OdinInspector.ValueDropdown("GetAllItemID")]
+        public string weaponId;
         private bool daggerActive;
         private ItemPhysic daggerBase;
-        private Item summonedDagger;
+        public Item summonedDagger;
         private EffectData throwEffect;
         private GameObject blackHolePrefab;
         private GameObject blackHole;
@@ -21,12 +23,16 @@ namespace DaggerSpell {
             base.OnCatalogRefresh();
             AssetBundle assetBundle = AssetBundle.GetAllLoadedAssetBundles().Where(bundle => bundle.name.Contains("blackhole")).First();
             blackHolePrefab = assetBundle.LoadAsset<GameObject>("BlackHole.prefab");
-            daggerBase = Catalog.GetData<ItemPhysic>("DaggerCommon", true);
+            daggerBase = Catalog.GetData<ItemPhysic>(weaponId, true);
             throwEffect = Catalog.GetData<EffectData>("SpellTelekinesisPush");
         }
 
         public override void Init() {
             base.Init();
+        }
+
+        public override void UpdateImbue() {
+            base.UpdateImbue();
         }
 
         private float GetBlackHoleIntensityFromCharge() {
@@ -115,13 +121,6 @@ namespace DaggerSpell {
                 throwEffectInstance = throwEffect.Spawn(spellCaster.magicSource);
                 throwEffectInstance.SetTarget(summonedDagger.transform);
                 throwEffectInstance.Play();
-                //throwEffectInstance.SetIntensity(1f);
-                //foreach (PropertyDescriptor descriptor in TypeDescriptor.GetProperties(throwEffectInstance)) {
-                //    string name = descriptor.Name;
-                //    object value = descriptor.GetValue(throwEffectInstance);
-                //    Debug.Log($"{name}={value}");
-                //}
-                //throwEffectInstance.onEffectFinished += (effect) => { effect.Stop(); effect.Despawn(); };
                 summonedDagger.Throw();
                 daggerActive = false;
             }
