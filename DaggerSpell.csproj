@@ -80,7 +80,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AbstractMergeSpell.cs" />
-    <Compile Include="DaggerBlackHoleMerge.cs" />
+    <Compile Include="DaggerCosmicMerge.cs" />
     <Compile Include="DaggerEarthBendingMerge.cs" />
     <Compile Include="DaggerFireMerge.cs" />
     <Compile Include="DaggerGravityMerge.cs" />
@@ -92,6 +92,6 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>xcopy $(TargetPath) "D:\Games\Steam\steamapps\common\Blade &amp; Sorcery\BladeAndSorcery_Data\StreamingAssets\DaggerSpell" /Y</PostBuildEvent>
+    <PostBuildEvent>xcopy $(TargetPath) "C:\Program Files (x86)\Steam\steamapps\common\Blade &amp; Sorcery\BladeAndSorcery_Data\StreamingAssets\DaggerSpell" /Y</PostBuildEvent>
   </PropertyGroup>
 </Project>

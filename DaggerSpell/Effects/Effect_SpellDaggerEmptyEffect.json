@@ -1,0 +1,11 @@
+{
+  "$type": "ThunderRoad.EffectData, Assembly-CSharp",
+  "id": "SpellDaggerEmptyEffect",
+  "version": 0,
+  "exludeFromBuild": false,
+  "category": "Spell/Dagger",
+  "globalVolume": 1.0,
+  "globalMinPitch": 1.0,
+  "globalMaxPitch": 1.0,
+  "modules": []
+}

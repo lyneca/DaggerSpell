@@ -1,0 +1,18 @@
+{
+  "$type": "ThunderRoad.ItemSpell, Assembly-CSharp",
+  "id": "DaggerLightningMerge",
+  "version": 4,
+  "exludeFromBuild": false,
+  "spellId": "DaggerLightningMerge",
+  "localizationId": null,
+  "displayName": "Dagger Lightning Merge",
+  "description": null,
+  "author": "Unknown",
+  "price": 0.0,
+  "purchasable": false,
+  "tier": 0,
+  "levelRequired": 0,
+  "isStackable": false,
+  "categoryPath": [],
+  "iconEffectId": "SpellOrbFire"
+}

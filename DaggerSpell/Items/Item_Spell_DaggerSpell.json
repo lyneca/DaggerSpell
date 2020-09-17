@@ -1,0 +1,18 @@
+{
+  "$type": "ThunderRoad.ItemSpell, Assembly-CSharp",
+  "id": "DaggerSpell",
+  "version": 4,
+  "exludeFromBuild": false,
+  "spellId": "DaggerSpell",
+  "localizationId": null,
+  "displayName": "Daggers",
+  "description": null,
+  "author": "Unknown",
+  "price": 0.0,
+  "purchasable": false,
+  "tier": 0,
+  "levelRequired": 0,
+  "isStackable": false,
+  "categoryPath": [],
+  "iconEffectId": "SpellOrbDagger"
+}

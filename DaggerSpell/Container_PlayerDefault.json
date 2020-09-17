@@ -1,0 +1,58 @@
+{
+  "$type": "ThunderRoad.ContainerData, Assembly-CSharp",
+  "id": "PlayerDefault",
+  "version": 1,
+  "exludeFromBuild": false,
+  "displayName": "",
+  "description": null,
+  "content": [
+    {
+      "referenceID": "DaggerSpell",
+      "reference": 0,
+      "quantity": 1,
+      "customValues": []
+    },
+    {
+      "referenceID": "DaggerMerge",
+      "reference": 0,
+      "quantity": 1,
+      "customValues": []
+    },
+    {
+      "referenceID": "DaggerFireMerge",
+      "reference": 0,
+      "quantity": 1,
+      "customValues": []
+    },
+    {
+      "referenceID": "DaggerLightningMerge",
+      "reference": 0,
+      "quantity": 1,
+      "customValues": []
+    },
+    {
+      "referenceID": "DaggerGravityMerge",
+      "reference": 0,
+      "quantity": 1,
+      "customValues": []
+    },
+    {
+      "referenceID": "DaggerIceSpellMerge",
+      "reference": 0,
+      "quantity": 1,
+      "customValues": []
+    },
+    {
+      "referenceID": "DaggerEarthBendingMerge",
+      "reference": 0,
+      "quantity": 1,
+      "customValues": []
+    },
+    {
+      "referenceID": "DaggerCosmicMerge",
+      "reference": 0,
+      "quantity": 1,
+      "customValues": []
+    },
+  ]
+}

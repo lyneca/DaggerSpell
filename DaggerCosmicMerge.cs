@@ -7,9 +7,9 @@ using UnityEngine;
 using ThunderRoad;
 
 namespace DaggerSpell {
-    class DaggerBlackHoleMerge : AbstractMergeSpell {
+    class DaggerCosmicMerge : AbstractMergeSpell {
         public override void OnCatalogRefresh() {
-            spellCastName = "BlackHole";
+            spellCastName = "Cosmic";
             base.OnCatalogRefresh();
         }
     }
