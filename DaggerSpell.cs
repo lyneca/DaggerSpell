@@ -124,7 +124,7 @@ namespace DaggerSpell {
                 base.Throw(velocity);
                 EnableDagger();
                 Rigidbody rb = summonedDagger.GetComponent<Rigidbody>();
-                PointItemFlyRefAtTarget(summonedDagger, velocity, Time.deltaTime * 10.0f);
+                PointItemFlyRefAtTarget(summonedDagger, velocity, 1.0f);
                 rb.AddForce(velocity * 5, ForceMode.Impulse);
                 throwEffectInstance = throwEffect.Spawn(spellCaster.magicSource);
                 throwEffectInstance.SetTarget(summonedDagger.transform);

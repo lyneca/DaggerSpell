@@ -208,7 +208,7 @@ namespace DaggerSpell {
                 }
 
                 item.transform.position = Vector3.Lerp(item.transform.position, GetTarget(number, count), Time.deltaTime * 10.0f);
-                PointItemFlyRefAtTarget(item, GetHandsPointingQuaternion() * Vector3.forward, Time.deltaTime * 10.0f);
+                PointItemFlyRefAtTarget(item, GetClosestCreatureHead() - item.transform.position, Time.deltaTime * 10.0f);
 
                 item.transform.localScale = Vector3.one * charge;
                 blackHole.transform.localScale = Vector3.one * GetBlackHoleIntensityFromCharge(charge) * 0.2f;
