@@ -13,6 +13,7 @@ namespace DaggerSpell {
         public string weaponId;
         public int maxDaggers = 6;
         private bool isActive;
+        private bool isGripping;
         List<FloatingDagger> daggers = new List<FloatingDagger>();
         ItemPhysic daggerBase;
         private GameObject blackHolePrefab;
@@ -37,24 +38,17 @@ namespace DaggerSpell {
             if (active && !isActive) {
                 isActive = true;
             } else {
-                if (currentCharge == 1) {
-                    foreach (FloatingDagger dagger in daggers) {
-                        dagger.Throw();
-                        dagger.Destroy();
-                    }
-                } else {
-                    foreach (FloatingDagger dagger in daggers) {
-                        dagger.item.Despawn();
-                        dagger.Destroy();
-                    }
-                }
-                daggers.Clear();
-                isActive = false;
+                ThrowOrDespawn();
             }
         }
 
         private FloatingDagger SpawnDagger() {
-            FloatingDagger dagger = new FloatingDagger(daggerBase.Spawn(), UnityEngine.Object.Instantiate(blackHolePrefab));
+            FloatingDagger dagger = new FloatingDagger(
+                daggerBase.Spawn(),
+                UnityEngine.Object.Instantiate(blackHolePrefab),
+                daggers.Count(),
+                daggers.Count() + 1);
+            dagger.item.rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
             dagger.item.GetComponent<Rigidbody>().isKinematic = true;
             dagger.item.disallowDespawn = false;
             return dagger;
@@ -62,6 +56,7 @@ namespace DaggerSpell {
 
         private void ReleaseDagger(Item dagger) {
             dagger.GetComponent<Rigidbody>().isKinematic = false;
+            dagger.rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
         }
 
         private static Vector3 GetHandCenterPoint() {
@@ -80,9 +75,42 @@ namespace DaggerSpell {
             );
         }
 
+        public void ThrowOrDespawn() {
+            if (currentCharge == 1) {
+                foreach (FloatingDagger dagger in daggers) {
+                    dagger.Throw();
+                    dagger.Destroy();
+                }
+            } else {
+                foreach (FloatingDagger dagger in daggers) {
+                    dagger.item.Despawn();
+                    dagger.Destroy();
+                }
+            }
+            daggers.Clear();
+            isActive = false;
+            isGripping = false;
+        }
+
+        public static bool IsPlayerGripping() {
+            return PlayerControl.handLeft.gripPressed && PlayerControl.handRight.gripPressed;
+        }
+
+        public void HandleDaggerThrowCondition() {
+            if (IsPlayerGripping()) {
+                if (isActive && !isGripping)
+                    isGripping = true;
+            } else {
+                if (!isActive && isGripping) {
+                    ThrowOrDespawn();
+                }
+            }
+        }
+
         public override void Update() {
             base.Update();
             if (isActive) {
+                HandleDaggerThrowCondition();
                 if (Time.time - lastSpawnTime > daggerSpawnTime && daggers.Count() < maxDaggers) {
                     lastSpawnTime = Time.time;
                     FloatingDagger dagger = SpawnDagger();
@@ -91,38 +119,55 @@ namespace DaggerSpell {
                 }
                 int i = 0;
                 foreach (FloatingDagger dagger in daggers) {
-                    dagger.Update(daggers.Count(), i++);
+                    dagger.Update(i++, daggers.Count());
                 }
             }
         }
-        private static float GetBlackHoleIntensityFromCharge(float charge) {
-            return (float)Math.Max(Math.Min(Math.Round(Math.Sin(charge * Math.PI) * charge * 1.5f, 3), 1.0f), 0.0f);
-        }
 
+        private static float GetBlackHoleIntensityFromCharge(float charge) {
+            return (float)Mathf.Clamp((float)Math.Round(Math.Sin(charge * Math.PI) * charge * 1.5f, 3), 0.0f, 0.1f);
+        }
 
         class FloatingDagger {
             public Item item;
             private float charge = 0.0f;
             private GameObject blackHole;
 
-            public FloatingDagger(Item dagger, GameObject blackHolePrefab) {
+            public FloatingDagger(Item dagger, GameObject blackHolePrefab, int number, int count) {
                 item = dagger;
                 item.transform.localScale = Vector3.one * charge;
-                item.transform.position = GetTarget(0);
-                item.transform.rotation = GetHandsPointingQuaternion() * Quaternion.Euler(0, -90, 0);
-                blackHole = UnityEngine.Object.Instantiate(blackHolePrefab, GetTarget(0), Quaternion.identity);
+                item.transform.position = GetTarget(number, count);
+                PointItemFlyRefAtTarget(item, GetHandsPointingQuaternion() * Vector3.forward, 1.0f);
+                blackHole = UnityEngine.Object.Instantiate(blackHolePrefab, item.transform.position, Quaternion.identity);
                 blackHole.transform.localScale = Vector3.one * 0.25f;
                 blackHole.transform.localPosition = Vector3.zero;
                 blackHole.GetComponent<Renderer>().material.SetFloat("HoleSize", 0);
                 blackHole.GetComponent<Renderer>().material.SetFloat("DistortionStrength", 0);
             }
 
-            private Vector3 GetTarget(float angle) {
-                return GetHandCenterPoint()
-                        + GetHandsPointingQuaternion()
-                        * Quaternion.Euler(0.0f, 0.0f, angle)
-                        * Vector3.left
-                        * (0.2f + 1.5f * Creature.player.mana.mergeHandsDistance);
+            private void PointItemFlyRefAtTarget(Item item, Vector3 target, float lerpFactor) {
+                item.transform.rotation = Quaternion.Slerp(
+                    item.transform.rotation * item.definition.flyDirRef.localRotation,
+                    Quaternion.LookRotation(target),
+                    lerpFactor) * Quaternion.Inverse(item.definition.flyDirRef.localRotation);
+            }
+
+            private Vector3 GetTarget(int number, int count) {
+                if (IsPlayerGripping()) {
+                    return Vector3.LerpUnclamped(
+                        Creature.player.body.handLeft.transform.position,
+                        Creature.player.body.handRight.transform.position,
+                        number / (Math.Max(count - 1.0f, 1)) * 3.0f - 1.0f) + GetHandsPointingQuaternion()
+                            * Vector3.forward
+                            * (0.3f + Math.Abs(number - Math.Max(count - 1.0f, 1) / 2.0f) / (Math.Max(count - 1.0f, 1) / 2.0f) * 0.5f);
+                } else {
+                    float angle = 360.0f * (number / (float)count);
+                    return GetHandCenterPoint()
+                            + GetHandsPointingQuaternion()
+                            * Quaternion.Euler(0.0f, 0.0f, angle)
+                            * Vector3.left
+                            * (0.2f + 1.5f * Creature.player.mana.mergeHandsDistance);
+                }
             }
 
             public void Destroy() {
@@ -142,20 +187,19 @@ namespace DaggerSpell {
             }
 
             public void Throw() {
-                item.GetComponent<Rigidbody>().isKinematic = false;
+                item.rb.isKinematic = false;
+                item.rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
                 Vector3 aimVector = GetClosestCreatureHead() - item.transform.position;
                 aimVector.Normalize();
-                item.GetComponent<Rigidbody>().AddForce(aimVector * 20.0f, ForceMode.Impulse);
+                item.rb.AddForce(aimVector * 20.0f, ForceMode.Impulse);
                 item.Throw();
             }
 
-            public void Update(int count, int number) {
+            public void Update(int number, int count) {
                 if (item == null)
                     return;
 
                 //Debug.Log($"{count}, {number}");
-
-                float angle = 360.0f * (number / (float)count);
 
                 if (charge < 1) {
                     charge += 0.03f;
@@ -163,8 +207,9 @@ namespace DaggerSpell {
                     charge = 1;
                 }
 
-                item.transform.position = Vector3.Lerp(item.transform.position, GetTarget(angle), Time.deltaTime * 10.0f);
-                item.transform.rotation = Quaternion.Slerp(item.transform.rotation, Quaternion.LookRotation(GetClosestCreatureHead() - item.transform.position) * Quaternion.LookRotation(Vector3.left), Time.deltaTime * 10.0f);
+                item.transform.position = Vector3.Lerp(item.transform.position, GetTarget(number, count), Time.deltaTime * 10.0f);
+                PointItemFlyRefAtTarget(item, GetHandsPointingQuaternion() * Vector3.forward, Time.deltaTime * 10.0f);
+
                 item.transform.localScale = Vector3.one * charge;
                 blackHole.transform.localScale = Vector3.one * GetBlackHoleIntensityFromCharge(charge) * 0.2f;
                 blackHole.transform.position = item.transform.position;

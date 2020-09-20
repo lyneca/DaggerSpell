@@ -35,11 +35,7 @@ namespace DaggerSpell {
                     }
                     daggerActive = true;
                     summonedDagger = daggerBase.Spawn();
-                    summonedDagger.transform.rotation = Quaternion.Slerp(
-                        summonedDagger.transform.rotation,
-                        Quaternion.LookRotation(GetClosestCreatureHead() - summonedDagger.transform.position),
-                        Time.deltaTime * 10.0f
-                    );
+                    PointItemFlyRefAtTarget(summonedDagger, GetClosestCreatureHead() - summonedDagger.transform.position, 1.0f);
                     summonedDagger.transform.position = GetHandCenterPoint();
                     summonedDagger.GetComponent<Rigidbody>().isKinematic = true;
                 }
@@ -100,6 +96,13 @@ namespace DaggerSpell {
             return PlayerControl.GetHand(side).gripPressed && Creature.player.body.GetHand(side).interactor.grabbedHandle == null;
         }
 
+        private void PointItemFlyRefAtTarget(Item item, Vector3 target, float lerpFactor) {
+            item.transform.rotation = Quaternion.Slerp(
+                item.transform.rotation * item.definition.flyDirRef.localRotation,
+                Quaternion.LookRotation(target),
+                lerpFactor) * Quaternion.Inverse(item.definition.flyDirRef.localRotation);
+        }
+
         public override void Update() {
             base.Update();
             if (daggerActive) {
@@ -109,11 +112,7 @@ namespace DaggerSpell {
                     } catch { }
                 }
                 summonedDagger.transform.localScale = Vector3.one * currentCharge;
-                summonedDagger.transform.rotation = Quaternion.Slerp(
-                    summonedDagger.transform.rotation,
-                    Quaternion.LookRotation(GetClosestCreatureHead() - summonedDagger.transform.position) * Quaternion.LookRotation(Vector3.left),
-                    Time.deltaTime * 10
-                );
+                PointItemFlyRefAtTarget(summonedDagger, GetClosestCreatureHead() - summonedDagger.transform.position, Time.deltaTime * 10.0f);
                 summonedDagger.transform.position = Vector3.Lerp(
                     summonedDagger.transform.position,
                     GetHandCenterPoint() + GetHandsPointingQuaternion() * Vector3.forward * Creature.player.mana.mergeHandsDistance / 3.0f,

@@ -39,18 +39,26 @@ namespace DaggerSpell {
             return (float)Math.Max(Math.Min(Math.Round(Math.Sin(currentCharge * Math.PI) * currentCharge * 1.5f, 3), 1.0f), 0.0f);
         }
 
+        private void PointItemFlyRefAtTarget(Item item, Vector3 target, float lerpFactor) {
+            item.transform.rotation = Quaternion.Slerp(
+                item.transform.rotation * item.definition.flyDirRef.localRotation,
+                Quaternion.LookRotation(target),
+                lerpFactor) * Quaternion.Inverse(item.definition.flyDirRef.localRotation);
+        }
+
         public override void UpdateCaster() {
             base.UpdateCaster();
             if (daggerActive) {
                 summonedDagger.transform.localScale = Vector3.one * currentCharge;
                 blackHole.transform.localScale = Vector3.one * GetBlackHoleIntensityFromCharge() * 0.2f;
                 summonedDagger.transform.position = Vector3.Lerp(summonedDagger.transform.position, GetTargetPosition(), Time.deltaTime * 10);
+                Quaternion toRotation = Quaternion.identity;
                 switch (spellCaster.bodyHand.side) {
                     case Side.Left:
-                        summonedDagger.transform.rotation = Quaternion.Lerp(summonedDagger.transform.rotation, spellCaster.bodyHand.transform.rotation * Quaternion.Euler(0, 0, 180), Time.deltaTime * 10);
+                        PointItemFlyRefAtTarget(summonedDagger, -spellCaster.bodyHand.transform.right, Time.deltaTime * 10.0f);
                         break;
                     case Side.Right:
-                        summonedDagger.transform.rotation = Quaternion.Lerp(summonedDagger.transform.rotation, spellCaster.bodyHand.transform.rotation, Time.deltaTime * 10);
+                        PointItemFlyRefAtTarget(summonedDagger, spellCaster.bodyHand.transform.right, Time.deltaTime * 10.0f);
                         break;
                 }
                 blackHole.transform.position = summonedDagger.transform.position;
@@ -116,7 +124,7 @@ namespace DaggerSpell {
                 base.Throw(velocity);
                 EnableDagger();
                 Rigidbody rb = summonedDagger.GetComponent<Rigidbody>();
-                summonedDagger.transform.rotation = Quaternion.LookRotation(velocity) * Quaternion.LookRotation(Vector3.left);
+                PointItemFlyRefAtTarget(summonedDagger, velocity, Time.deltaTime * 10.0f);
                 rb.AddForce(velocity * 5, ForceMode.Impulse);
                 throwEffectInstance = throwEffect.Spawn(spellCaster.magicSource);
                 throwEffectInstance.SetTarget(summonedDagger.transform);
