@@ -5,11 +5,11 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using ThunderRoad;
+using UnityEngine.AddressableAssets;
+using Utils.ExtensionMethods;
 
 namespace DaggerSpell {
     class DaggerMerge : SpellMergeData {
-        [global::Sirenix.OdinInspector.BoxGroup("Merge", true, false, 0)]
-        [global::Sirenix.OdinInspector.ValueDropdown("GetAllItemID")]
         public string weaponId;
         public int maxDaggers = 6;
         private bool isActive;
@@ -22,10 +22,9 @@ namespace DaggerSpell {
         float daggerSpawnTime = 0.5f;
         public override void OnCatalogRefresh() {
             base.OnCatalogRefresh();
-            AssetBundle assetBundle = AssetBundle.GetAllLoadedAssetBundles().Where(bundle => bundle.name.Contains("blackhole")).First();
-            blackHolePrefab = assetBundle.LoadAsset<GameObject>("BlackHole.prefab");
+            Addressables.LoadAssetAsync<GameObject>("Lyneca.DaggerSpell.BlackHole").Task.Then(obj => blackHolePrefab = obj);
             blackHoleEffect = Catalog.GetData<EffectData>("SpellDaggerSummonSound");
-            daggerBase = Catalog.GetData<ItemPhysic>(weaponId, true);
+            daggerBase = Catalog.GetData<ItemPhysic>(weaponId ?? Catalog.GetData<DaggerSpell>("DaggerSpell").weaponId, true);
             daggers = new List<FloatingDagger>();
         }
 
@@ -34,23 +33,29 @@ namespace DaggerSpell {
         }
 
         public override void Merge(bool active) {
-            base.Merge(active);
-            if (active && !isActive) {
+            if (active && !isActive && Player.currentCreature.handLeft.grabbedHandle == null && Player.currentCreature.handRight.grabbedHandle == null) {
+                base.Merge(true);
                 isActive = true;
+                if (Player.currentCreature.mana.casterLeft.spellInstance is DaggerSpell leftSpell && leftSpell.summonedDagger != null) {
+                    leftSpell.summonedDagger.gameObject.SetActive(false);
+                }
+                if (Player.currentCreature.mana.casterRight.spellInstance is DaggerSpell rightSpell && rightSpell.summonedDagger != null) {
+                    rightSpell.summonedDagger.gameObject.SetActive(false);
+                }
             } else {
                 ThrowOrDespawn();
+                base.Merge(false);
+                currentCharge = 0;
             }
         }
 
         private FloatingDagger SpawnDagger() {
             FloatingDagger dagger = new FloatingDagger(
-                daggerBase.Spawn(),
+                daggerBase,
                 UnityEngine.Object.Instantiate(blackHolePrefab),
+                blackHoleEffect,
                 daggers.Count(),
                 daggers.Count() + 1);
-            dagger.item.rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
-            dagger.item.GetComponent<Rigidbody>().isKinematic = true;
-            dagger.item.disallowDespawn = false;
             return dagger;
         }
 
@@ -61,16 +66,16 @@ namespace DaggerSpell {
 
         private static Vector3 GetHandCenterPoint() {
             return Vector3.Lerp(
-                Creature.player.body.handLeft.transform.position,
-                Creature.player.body.handRight.transform.position,
+                Player.currentCreature.handLeft.transform.position,
+                Player.currentCreature.handRight.transform.position,
                 0.5f
             );
         }
 
         private static Quaternion GetHandsPointingQuaternion() {
             return Quaternion.Slerp(
-                Quaternion.LookRotation(Creature.player.animator.GetBoneTransform(HumanBodyBones.RightHand).transform.right * -1.0f),
-                Quaternion.LookRotation(Creature.player.animator.GetBoneTransform(HumanBodyBones.LeftHand).transform.right * -1.0f),
+                Quaternion.LookRotation(Player.currentCreature.animator.GetBoneTransform(HumanBodyBones.RightHand).transform.right * -1.0f),
+                Quaternion.LookRotation(Player.currentCreature.animator.GetBoneTransform(HumanBodyBones.LeftHand).transform.right * -1.0f),
                 0.5f
             );
         }
@@ -115,7 +120,6 @@ namespace DaggerSpell {
                     lastSpawnTime = Time.time;
                     FloatingDagger dagger = SpawnDagger();
                     daggers.Add(dagger);
-                    blackHoleEffect.Spawn(dagger.item.transform).Play();
                 }
                 int i = 0;
                 foreach (FloatingDagger dagger in daggers) {
@@ -133,30 +137,36 @@ namespace DaggerSpell {
             private float charge = 0.0f;
             private GameObject blackHole;
 
-            public FloatingDagger(Item dagger, GameObject blackHolePrefab, int number, int count) {
-                item = dagger;
-                item.transform.localScale = Vector3.one * charge;
-                item.transform.position = GetTarget(number, count);
-                PointItemFlyRefAtTarget(item, GetHandsPointingQuaternion() * Vector3.forward, 1.0f);
-                blackHole = UnityEngine.Object.Instantiate(blackHolePrefab, item.transform.position, Quaternion.identity);
-                blackHole.transform.localScale = Vector3.one * 0.25f;
-                blackHole.transform.localPosition = Vector3.zero;
-                blackHole.GetComponent<Renderer>().material.SetFloat("HoleSize", 0);
-                blackHole.GetComponent<Renderer>().material.SetFloat("DistortionStrength", 0);
+            public FloatingDagger(ItemPhysic daggerBase, GameObject blackHolePrefab, EffectData soundEffect, int number, int count) {
+                daggerBase.SpawnAsync(dagger => {
+                    item = dagger;
+                    item.transform.localScale = Vector3.one * charge;
+                    item.transform.position = GetTarget(number, count);
+                    soundEffect.Spawn(dagger.transform).Play();
+                    PointItemFlyRefAtTarget(item, GetHandsPointingQuaternion() * Vector3.forward, 1.0f);
+                    item.rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
+                    item.GetComponent<Rigidbody>().isKinematic = true;
+                    item.disallowDespawn = false;
+                    blackHole = UnityEngine.Object.Instantiate(blackHolePrefab, item.transform.position, Quaternion.identity);
+                    blackHole.transform.localScale = Vector3.one * 0.25f;
+                    blackHole.transform.localPosition = Vector3.zero;
+                    blackHole.GetComponent<Renderer>().material.SetFloat("HoleSize", 0);
+                    blackHole.GetComponent<Renderer>().material.SetFloat("DistortionStrength", 0);
+                });
             }
 
             private void PointItemFlyRefAtTarget(Item item, Vector3 target, float lerpFactor) {
                 item.transform.rotation = Quaternion.Slerp(
-                    item.transform.rotation * item.definition.flyDirRef.localRotation,
+                    item.transform.rotation * item.flyDirRef.localRotation,
                     Quaternion.LookRotation(target),
-                    lerpFactor) * Quaternion.Inverse(item.definition.flyDirRef.localRotation);
+                    lerpFactor) * Quaternion.Inverse(item.flyDirRef.localRotation);
             }
 
             private Vector3 GetTarget(int number, int count) {
                 if (IsPlayerGripping()) {
                     return Vector3.LerpUnclamped(
-                        Creature.player.body.handLeft.transform.position,
-                        Creature.player.body.handRight.transform.position,
+                        Player.currentCreature.handLeft.transform.position,
+                        Player.currentCreature.handRight.transform.position,
                         number / (Math.Max(count - 1.0f, 1)) * 3.0f - 1.0f) + GetHandsPointingQuaternion()
                             * Vector3.forward
                             * (0.3f + Math.Abs(number - Math.Max(count - 1.0f, 1) / 2.0f) / (Math.Max(count - 1.0f, 1) / 2.0f) * 0.5f);
@@ -166,7 +176,7 @@ namespace DaggerSpell {
                             + GetHandsPointingQuaternion()
                             * Quaternion.Euler(0.0f, 0.0f, angle)
                             * Vector3.left
-                            * (0.2f + 1.5f * Creature.player.mana.mergeHandsDistance);
+                            * (0.2f + 1.5f * Player.currentCreature.mana.mergeHandsDistance);
                 }
             }
 
@@ -187,6 +197,8 @@ namespace DaggerSpell {
             }
 
             public void Throw() {
+                if (!item)
+                    return;
                 item.rb.isKinematic = false;
                 item.rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
                 Vector3 aimVector = GetClosestCreatureHead() - item.transform.position;
@@ -196,7 +208,7 @@ namespace DaggerSpell {
             }
 
             public void Update(int number, int count) {
-                if (item == null)
+                if (!item)
                     return;
 
                 //Debug.Log($"{count}, {number}");

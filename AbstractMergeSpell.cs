@@ -19,8 +19,7 @@ namespace DaggerSpell {
 
         public override void OnCatalogRefresh() {
             base.OnCatalogRefresh();
-            AssetBundle assetBundle = AssetBundle.GetAllLoadedAssetBundles().Where(bundle => bundle.name.Contains("blackhole")).First();
-            daggerBase = Catalog.GetData<ItemPhysic>(weaponId, true);
+            daggerBase = Catalog.GetData<ItemPhysic>(weaponId ?? Catalog.GetData<DaggerSpell>("DaggerSpell").weaponId, true);
             spellCharge = Catalog.GetData<SpellCastCharge>(spellCastName);
         }
 
@@ -28,16 +27,18 @@ namespace DaggerSpell {
             base.Merge(active);
             if (active) {
                 if (!daggerActive) {
-                    if (Creature.player.mana.casterLeft.spellInstance is DaggerSpell leftSpell && leftSpell.summonedDagger != null) {
+                    if (Player.currentCreature.mana.casterLeft.spellInstance is DaggerSpell leftSpell && leftSpell.summonedDagger != null) {
                         leftSpell.summonedDagger.gameObject.SetActive(false);
-                    } else if (Creature.player.mana.casterRight.spellInstance is DaggerSpell rightSpell && rightSpell.summonedDagger != null) {
+                    } else if (Player.currentCreature.mana.casterRight.spellInstance is DaggerSpell rightSpell && rightSpell.summonedDagger != null) {
                         rightSpell.summonedDagger.gameObject.SetActive(false);
                     }
                     daggerActive = true;
-                    summonedDagger = daggerBase.Spawn();
-                    PointItemFlyRefAtTarget(summonedDagger, GetClosestCreatureHead() - summonedDagger.transform.position, 1.0f);
-                    summonedDagger.transform.position = GetHandCenterPoint();
-                    summonedDagger.GetComponent<Rigidbody>().isKinematic = true;
+                    daggerBase.SpawnAsync(dagger => {
+                        summonedDagger = dagger;
+                        PointItemFlyRefAtTarget(summonedDagger, GetClosestCreatureHead() - summonedDagger.transform.position, 1.0f);
+                        summonedDagger.transform.position = GetHandCenterPoint();
+                        summonedDagger.GetComponent<Rigidbody>().isKinematic = true;
+                    });
                 }
             } else {
                 if (daggerActive) {
@@ -58,8 +59,8 @@ namespace DaggerSpell {
 
         private Quaternion GetHandsPointingQuaternion() {
             return Quaternion.Slerp(
-                Quaternion.LookRotation(Creature.player.animator.GetBoneTransform(HumanBodyBones.RightHand).transform.right * -1.0f),
-                Quaternion.LookRotation(Creature.player.animator.GetBoneTransform(HumanBodyBones.LeftHand).transform.right * -1.0f),
+                Quaternion.LookRotation(Player.currentCreature.animator.GetBoneTransform(HumanBodyBones.RightHand).transform.right * -1.0f),
+                Quaternion.LookRotation(Player.currentCreature.animator.GetBoneTransform(HumanBodyBones.LeftHand).transform.right * -1.0f),
                 0.5f
             );
         }
@@ -82,8 +83,8 @@ namespace DaggerSpell {
 
         private Vector3 GetHandCenterPoint() {
             return Vector3.Lerp(
-                Creature.player.body.handLeft.transform.position,
-                Creature.player.body.handRight.transform.position,
+                Player.currentCreature.handLeft.transform.position,
+                Player.currentCreature.handRight.transform.position,
                 0.5f
             );
         }
@@ -93,14 +94,14 @@ namespace DaggerSpell {
         }
 
         private bool CanGrabWithHand(Side side) {
-            return PlayerControl.GetHand(side).gripPressed && Creature.player.body.GetHand(side).interactor.grabbedHandle == null;
+            return PlayerControl.GetHand(side).gripPressed && Player.currentCreature.GetHand(side).grabbedHandle == null;
         }
 
         private void PointItemFlyRefAtTarget(Item item, Vector3 target, float lerpFactor) {
             item.transform.rotation = Quaternion.Slerp(
-                item.transform.rotation * item.definition.flyDirRef.localRotation,
+                item.transform.rotation * item.flyDirRef.localRotation,
                 Quaternion.LookRotation(target),
-                lerpFactor) * Quaternion.Inverse(item.definition.flyDirRef.localRotation);
+                lerpFactor) * Quaternion.Inverse(item.flyDirRef.localRotation);
         }
 
         public override void Update() {
@@ -115,17 +116,17 @@ namespace DaggerSpell {
                 PointItemFlyRefAtTarget(summonedDagger, GetClosestCreatureHead() - summonedDagger.transform.position, Time.deltaTime * 10.0f);
                 summonedDagger.transform.position = Vector3.Lerp(
                     summonedDagger.transform.position,
-                    GetHandCenterPoint() + GetHandsPointingQuaternion() * Vector3.forward * Creature.player.mana.mergeHandsDistance / 3.0f,
+                    GetHandCenterPoint() + GetHandsPointingQuaternion() * Vector3.forward * Player.currentCreature.mana.mergeHandsDistance / 3.0f,
                     Time.deltaTime * 10);
                 if (currentCharge == 1 && CanGrabWithHand(Side.Right)) {
                     EnableDagger();
-                    Creature.player.body.handRight.interactor.Grab(summonedDagger.mainHandleRight);
+                    Player.currentCreature.handRight.Grab(summonedDagger.mainHandleRight);
                     daggerActive = false;
                     currentCharge = 0;
                     base.Merge(false);
                 } else if (currentCharge == 1 && CanGrabWithHand(Side.Left)) {
                     EnableDagger();
-                    Creature.player.body.handLeft.interactor.Grab(summonedDagger.mainHandleLeft);
+                    Player.currentCreature.handLeft.Grab(summonedDagger.mainHandleLeft);
                     daggerActive = false;
                     currentCharge = 0;
                     base.Merge(false);
